@@ -10,6 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// Проверяет что сообщение не пустое
 func CheckMessage(update tgbotapi.Update) error {
 	if update.Message == nil || update.Message.Text == "" {
 		return errors2.ErrEmptyMessage
@@ -17,6 +18,7 @@ func CheckMessage(update tgbotapi.Update) error {
 	return nil
 }
 
+// ParseEmptyText парсит пустой текст
 func ParseEmptyText(text string) error {
 	if strings.TrimSpace(text) == "" {
 		return errors2.ErrEmptyMessage
@@ -98,10 +100,8 @@ func ValidateTimeInterval(start, end time.Time) error {
 
 // ParseFrequency парсит строку частоты в time.Duration
 func ParseFrequency(freqStr string) (time.Duration, error) {
-	// Нормализуем строку
 	freqStr = strings.ToLower(strings.TrimSpace(freqStr))
 
-	// Убираем префикс "каждые" если есть
 	freqStr = strings.TrimPrefix(freqStr, "каждые")
 	freqStr = strings.TrimSpace(freqStr)
 
@@ -109,26 +109,22 @@ func ParseFrequency(freqStr string) (time.Duration, error) {
 		return 0, errors2.ErrEmptyFreq
 	}
 
-	// Парсим число и единицу измерения
 	parts := strings.Fields(freqStr)
 	if len(parts) < 2 {
 		return 0, errors2.ErrWrongFreq
 	}
 
-	// Парсим число
 	number, err := strconv.Atoi(parts[0])
 	if err != nil || number <= 0 {
 		return 0, errors2.ErrWrongNumber
 	}
 
-	// Парсим единицу измерения
 	unit := normalizeTimeUnit(parts[1])
 	duration, err := parseTimeUnit(unit, number)
 	if err != nil {
 		return 0, err
 	}
 
-	// Проверяем минимальную частоту (например, не менее 1 минуты)
 	if duration < time.Minute {
 		return 0, errors2.ErrToShortFreq
 	}
@@ -168,4 +164,23 @@ func parseTimeUnit(unit string, number int) (time.Duration, error) {
 	default:
 		return 0, fmt.Errorf("неизвестная единица времени: %s. Используйте: секунды, минуты, часы, дни", unit)
 	}
+}
+
+// ParseAndValidateDates парсит и валидирует даты старта и окончания
+func ParseAndValidateDates(startDateStr, endDateStr, layout string, loc *time.Location) (time.Time, time.Time, error) {
+	startTime, err := ParseTimeInLocation(startDateStr, layout, loc)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("неверный формат даты старта: используйте %s", layout)
+	}
+
+	endTime, err := ParseTimeInLocation(endDateStr, layout, loc)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("неверный формат даты конца: используйте %s", layout)
+	}
+
+	if err := ValidateTimeInterval(startTime, endTime); err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	return startTime, endTime, nil
 }
