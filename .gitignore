@@ -1,0 +1,7 @@
+.env
+.env.local
+.env*.local
+
+.vscode
+.vscode.local
+.vscode*.local
